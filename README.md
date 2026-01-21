@@ -32,6 +32,19 @@ python robot.py --server wss://your-codespace-8000.app.github.dev/ws/ --difficul
 - `--server, -s`: Server WebSocket URL (default: `ws://localhost:8000/ws/`)
 - `--difficulty, -d`: AI difficulty 1-10 (default: 5)
 
+## Difficulty Levels
+
+The `--difficulty` option controls how smart CopperBot plays:
+
+| Level | Behavior |
+|-------|----------|
+| 1-3 | Makes frequent random mistakes, easy to beat |
+| 4-6 | Balanced play, occasional mistakes |
+| 7-8 | Smart play, avoids traps, rarely makes mistakes |
+| 9-10 | Expert play, optimal pathfinding, almost never makes mistakes |
+
+The difficulty level appears in the player name (e.g., "CopperBot L8").
+
 ## License
 
 MIT
