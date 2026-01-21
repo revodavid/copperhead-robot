@@ -185,9 +185,13 @@ class RobotPlayer:
             score = 0
             new_x, new_y = move["x"], move["y"]
             
+            # Big bonus for capturing food
+            if food and new_x == food[0] and new_y == food[1]:
+                score += 1000  # Always prioritize eating
+            
             # Prioritize moves that don't trap us (have escape routes)
             escape_routes = count_safe_neighbors(new_x, new_y)
-            score += escape_routes * 100  # High priority for survival
+            score += escape_routes * 50  # Important but not more than food
             
             # Distance to food (closer is better)
             if food:
