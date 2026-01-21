@@ -27,21 +27,24 @@ class RobotPlayer:
         self.running = False
         self.wins = 0
         self.games_played = 0
+        self.room_id = None
         
     async def connect(self):
-        """Connect to the game server."""
-        # Try player 1 first, fall back to player 2
-        for pid in [1, 2]:
-            url = f"{self.server_url}{pid}"
-            try:
-                print(f"🐍 Connecting to {url}...")
-                self.ws = await websockets.connect(url)
-                self.player_id = pid
-                print(f"✅ Connected as Player {pid}")
-                return True
-            except Exception as e:
-                print(f"❌ Player {pid} failed: {e}")
-        return False
+        """Connect to the game server using auto-matchmaking."""
+        # Use the /join endpoint for auto-matchmaking
+        base_url = self.server_url.rstrip("/")
+        if base_url.endswith("/ws"):
+            base_url = base_url[:-3]
+        url = f"{base_url}/ws/join"
+        
+        try:
+            print(f"🐍 Connecting to {url}...")
+            self.ws = await websockets.connect(url)
+            print(f"✅ Connected! Waiting for player assignment...")
+            return True
+        except Exception as e:
+            print(f"❌ Connection failed: {e}")
+            return False
     
     async def play(self):
         """Main game loop."""
@@ -50,14 +53,6 @@ class RobotPlayer:
             return
             
         self.running = True
-        
-        # Send ready message
-        await self.ws.send(json.dumps({
-            "action": "ready",
-            "mode": "two_player",
-            "name": f"CopperBot L{self.difficulty}"
-        }))
-        print(f"🎮 Ready! Playing at difficulty {self.difficulty}")
         
         try:
             while self.running:
@@ -75,7 +70,21 @@ class RobotPlayer:
         """Handle incoming server messages."""
         msg_type = data.get("type")
         
-        if msg_type == "state":
+        if msg_type == "joined":
+            # Server assigned us a player ID and room
+            self.player_id = data.get("player_id")
+            self.room_id = data.get("room_id")
+            print(f"✅ Joined Room {self.room_id} as Player {self.player_id}")
+            
+            # Send ready message
+            await self.ws.send(json.dumps({
+                "action": "ready",
+                "mode": "two_player",
+                "name": f"CopperBot L{self.difficulty}"
+            }))
+            print(f"🎮 Ready! Playing at difficulty {self.difficulty}")
+        
+        elif msg_type == "state":
             self.game_state = data.get("game")
             if self.game_state and self.game_state.get("running"):
                 direction = self.calculate_move()
