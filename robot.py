@@ -54,7 +54,8 @@ class RobotPlayer:
         # Send ready message
         await self.ws.send(json.dumps({
             "action": "ready",
-            "mode": "two_player"
+            "mode": "two_player",
+            "name": "CopperBot"
         }))
         print(f"🎮 Ready! Playing at difficulty {self.difficulty}")
         
@@ -102,7 +103,8 @@ class RobotPlayer:
             await asyncio.sleep(1)
             await self.ws.send(json.dumps({
                 "action": "ready",
-                "mode": "two_player"
+                "mode": "two_player",
+                "name": "CopperBot"
             }))
             print("🎮 Ready for next game!")
             
