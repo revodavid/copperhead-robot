@@ -47,24 +47,28 @@ class RobotPlayer:
             return False
     
     async def play(self):
-        """Main game loop."""
-        if not await self.connect():
-            print("Failed to connect to server")
-            return
+        """Main game loop with auto-reconnect."""
+        while True:
+            if not await self.connect():
+                print("Failed to connect to server. Retrying in 3 seconds...")
+                await asyncio.sleep(3)
+                continue
+                
+            self.running = True
             
-        self.running = True
-        
-        try:
-            while self.running:
-                message = await self.ws.recv()
-                data = json.loads(message)
-                await self.handle_message(data)
-        except websockets.ConnectionClosed:
-            print("🔌 Connection closed")
-        except Exception as e:
-            print(f"❌ Error: {e}")
-        finally:
-            self.running = False
+            try:
+                while self.running:
+                    message = await self.ws.recv()
+                    data = json.loads(message)
+                    await self.handle_message(data)
+            except websockets.ConnectionClosed:
+                print("🔌 Connection closed. Reconnecting in 2 seconds...")
+                await asyncio.sleep(2)
+            except Exception as e:
+                print(f"❌ Error: {e}. Reconnecting in 2 seconds...")
+                await asyncio.sleep(2)
+            finally:
+                self.running = False
             
     async def handle_message(self, data: dict):
         """Handle incoming server messages."""
