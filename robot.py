@@ -55,7 +55,7 @@ class RobotPlayer:
         await self.ws.send(json.dumps({
             "action": "ready",
             "mode": "two_player",
-            "name": "CopperBot"
+            "name": f"CopperBot L{self.difficulty}"
         }))
         print(f"🎮 Ready! Playing at difficulty {self.difficulty}")
         
@@ -104,7 +104,7 @@ class RobotPlayer:
             await self.ws.send(json.dumps({
                 "action": "ready",
                 "mode": "two_player",
-                "name": "CopperBot"
+                "name": f"CopperBot L{self.difficulty}"
             }))
             print("🎮 Ready for next game!")
             
