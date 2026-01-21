@@ -112,7 +112,7 @@ class RobotPlayer:
             print("⏳ Waiting for opponent...")
     
     def calculate_move(self) -> str | None:
-        """Calculate the best move using AI logic."""
+        """Calculate the best move using AI logic. Prioritizes survival."""
         if not self.game_state:
             return None
             
@@ -126,12 +126,7 @@ class RobotPlayer:
         current_dir = my_snake.get("direction", "right")
         food = self.game_state.get("food")
         
-        # Get opponent snake
-        opponent_id = 2 if self.player_id == 1 else 1
-        opponent = snakes.get(str(opponent_id))
-        opponent_body = opponent.get("body", []) if opponent else []
-        
-        # Build set of dangerous positions
+        # Build set of dangerous positions (all snake bodies)
         dangerous = set()
         for snake_data in snakes.values():
             for segment in snake_data.get("body", []):
@@ -148,63 +143,72 @@ class RobotPlayer:
         # Can't reverse
         opposites = {"up": "down", "down": "up", "left": "right", "right": "left"}
         
-        # Evaluate each direction
+        def is_safe(x, y):
+            """Check if position is safe (not wall, not snake)."""
+            if x < 0 or x >= GRID_WIDTH or y < 0 or y >= GRID_HEIGHT:
+                return False
+            if (x, y) in dangerous:
+                return False
+            return True
+        
+        def count_safe_neighbors(x, y):
+            """Count how many safe moves are available from a position."""
+            count = 0
+            for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+                nx, ny = x + dx, y + dy
+                if is_safe(nx, ny):
+                    count += 1
+            return count
+        
+        # First pass: find all safe moves
+        safe_moves = []
+        for direction, (dx, dy) in directions.items():
+            if direction == opposites.get(current_dir):
+                continue
+            new_x = head[0] + dx
+            new_y = head[1] + dy
+            if is_safe(new_x, new_y):
+                safe_moves.append({"direction": direction, "x": new_x, "y": new_y})
+        
+        # If no safe moves, pick any non-reversing move (we're doomed)
+        if not safe_moves:
+            for direction in directions:
+                if direction != opposites.get(current_dir):
+                    return direction
+            return current_dir
+        
+        # Evaluate safe moves
         best_dir = None
         best_score = float('-inf')
         
-        for direction, (dx, dy) in directions.items():
-            # Can't reverse
-            if direction == opposites.get(current_dir):
-                continue
-                
-            new_x = (head[0] + dx) % GRID_WIDTH
-            new_y = (head[1] + dy) % GRID_HEIGHT
-            
-            # Check if move is safe
-            if (new_x, new_y) in dangerous:
-                continue
-                
+        for move in safe_moves:
             score = 0
+            new_x, new_y = move["x"], move["y"]
+            
+            # Prioritize moves that don't trap us (have escape routes)
+            escape_routes = count_safe_neighbors(new_x, new_y)
+            score += escape_routes * 100  # High priority for survival
             
             # Distance to food (closer is better)
             if food:
                 food_dist = abs(new_x - food[0]) + abs(new_y - food[1])
                 score += (GRID_WIDTH + GRID_HEIGHT - food_dist) * 10
             
-            # Avoid edges at higher difficulties
-            if self.difficulty >= 5:
-                edge_dist = min(new_x, GRID_WIDTH - 1 - new_x, 
-                               new_y, GRID_HEIGHT - 1 - new_y)
-                score += edge_dist
-            
-            # Look-ahead collision check at higher difficulties
-            if self.difficulty >= 7:
-                future_safe = 0
-                for future_dir, (fdx, fdy) in directions.items():
-                    if future_dir == opposites.get(direction):
-                        continue
-                    fx = (new_x + fdx) % GRID_WIDTH
-                    fy = (new_y + fdy) % GRID_HEIGHT
-                    if (fx, fy) not in dangerous:
-                        future_safe += 1
-                score += future_safe * 5
+            # Prefer staying away from edges
+            edge_dist = min(new_x, GRID_WIDTH - 1 - new_x, 
+                           new_y, GRID_HEIGHT - 1 - new_y)
+            score += edge_dist * 5
             
             # Random factor based on difficulty (lower = more random)
             import random
             mistake_chance = (10 - self.difficulty) / 20
             if random.random() < mistake_chance:
-                score -= random.randint(0, 50)
+                score -= random.randint(0, 30)
             
             if score > best_score:
                 best_score = score
-                best_dir = direction
+                best_dir = move["direction"]
         
-        # If no safe move, try any non-reversing move
-        if best_dir is None:
-            for direction in directions:
-                if direction != opposites.get(current_dir):
-                    return direction
-                    
         return best_dir
 
 
